@@ -3,6 +3,10 @@ import logging
 from scrapy.utils.log import configure_logging
 from urllib.parse import urljoin
 
+#To Do
+# Pass pgNumber in parameters
+# Fix last page logic if the last page is one of the bounds and you're down to 3 pages
+
 class cfsObitCounter(scrapy.Spider):
     #Puts logs into a file
     configure_logging(install_root_handler=False)
@@ -15,8 +19,8 @@ class cfsObitCounter(scrapy.Spider):
     obitCount = 0
     pgNumber = 0
 
-    name = 'cfsObitCounter'
-    urls = ['https://www.lrbfh.com/']
+    name = 'cfsCounter'
+    urls = ['https://www.cannonfuneral.com']
     payload = f"pg={pgNumber}&term=&paginate=1&ym=0&showmiddlename=0&listcity=0&tgt=obitlist&numlistings=10&sids=12959&typ=1&txtsrch=0"
 
     headers = {

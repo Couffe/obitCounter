@@ -1,5 +1,7 @@
 /.DS_Store
 /.venv
 /.vscode
-/obitCounter/obitCounter/log.txt/
-/obitCounter/obitCounter/__pycache__/
+.log.txt
+.__pycache__/
+obitCounter/log.txt
+obitCounter/obitCounter/spiders/__pycache__
