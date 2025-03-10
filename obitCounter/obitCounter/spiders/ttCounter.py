@@ -11,7 +11,7 @@ class ttObitCounter(scrapy.Spider):
         level=logging.INFO
     )
 
-    name = 'ttObitCounter'
+    name = 'ttCounter'
     urls = ['https://www.geiple.com/']
 
     headers = {
