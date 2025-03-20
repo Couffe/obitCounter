@@ -20,8 +20,6 @@ class bvilleObitCounter(scrapy.Spider):
     
     urls = ['']
 
-    obitCount = 0
-
     def start_requests(self):
         #Sends request to URL to get the obituary page link
         for url in self.urls:
