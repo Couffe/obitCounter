@@ -13,15 +13,15 @@ class f1ObitCounter(scrapy.Spider):
     )
 
     name = 'frunnerCounter'
-    urls = ['https://www.swedberg-taylor.com/']
+    urls = ['https://www.burrier-queen.com']
 
     #Testing site URL: https://www.swedberg-taylor.com/
     #Testing site with memorials subdomain: https://www.burrier-queen.com
     #Obituary URL: https://obituaries.frontrunnerpro.com/runtime/311039/ims/WF2/public/get-records-additional.php
-    #payload: pageNum=10&rpp=6&width=159.6&height=186.78555&type=all&template=below&getServiceType=shiva&sort=dod&guid=MzA3OTA4Ok1haW5TaXRl&wholeSite=true
+    #pageNum=10&type=all&template=below&getServiceType=shiva&sort=dod&guid=MzA3OTA4Ok1haW5TaXRl&wholeSite=true
     """
     headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
         }
     Using this request returns a json file, that has all the obit info. Can traverse by doubling page number until we're past last page which
@@ -52,10 +52,9 @@ class f1ObitCounter(scrapy.Spider):
         if guid:
             pgNum = 1
             obitURL = 'https://obituaries.frontrunnerpro.com/runtime/311039/ims/WF2/public/get-records-additional.php'
-            payload = f'pageNum={pgNum}&rpp=6&width=159.6&height=186.78555&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
             yield scrapy.Request(url=obitURL,
                                  method='POST',
-                                 body=payload,
+                                 body=self.build_payload(pgNum, guid),
                                  headers=self.build_headers(baseURL, includeContentType=True, includeReferer=True),
                                  callback=self.get_bounds,
                                  cb_kwargs={'guid': guid,
@@ -71,15 +70,15 @@ class f1ObitCounter(scrapy.Spider):
         try:
             json_data = response.json()
             obits = json_data.get('data', [])
-        except json.JSONDecodeError:
+            
+        except ValueError:
             self.logger.info(f'Past Last Page: {pgNum}')
             lowerBound = pgNum // 2
             middlePgNum = (pgNum + lowerBound) // 2
             self.logger.info(f"Lower Bound: {lowerBound}, Middle Bound: {middlePgNum}, Upper Bound: {pgNum}")
-            payload = f'pageNum={middlePgNum}&rpp=6&width=159.6&height=186.78555&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
             yield scrapy.Request(url=obitURL,
                                  method='POST',
-                                 body=payload,
+                                 body=self.build_payload(middlePgNum, guid),
                                  headers=self.build_headers(baseURL, includeContentType=True, includeReferer=True),
                                  callback=self.find_last_page,
                                  cb_kwargs={'guid': guid,
@@ -87,7 +86,9 @@ class f1ObitCounter(scrapy.Spider):
                                             'lowerBound': lowerBound,
                                             'middlePgNum': middlePgNum,
                                             'upperBound': pgNum,
-                                            'baseURL': baseURL})
+                                            'baseURL': baseURL,
+                                            'defPageObitCount': defPageObitCount})
+            return
 
         if pgNum == 1:
             defPageObitCount = len(obits)
@@ -96,10 +97,9 @@ class f1ObitCounter(scrapy.Spider):
         if len(obits) == defPageObitCount:
             self.logger.info(f"Not past last page: {pgNum}")
             pgNum *= 2
-            payload = f'pageNum={pgNum}&rpp=6&width=159.6&height=186.78555&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
             yield scrapy.Request(url=obitURL,
                                  method='POST',
-                                 body=payload,
+                                 body=self.build_payload(pgNum, guid),
                                  headers=self.build_headers(baseURL, includeContentType=True, includeReferer=True),
                                  callback=self.get_bounds,
                                  cb_kwargs={'guid': guid,
@@ -107,20 +107,37 @@ class f1ObitCounter(scrapy.Spider):
                                             'pgNum': pgNum,
                                             'baseURL': baseURL,
                                             'defPageObitCount': defPageObitCount})
+            
+        elif (len(obits) < defPageObitCount):
+                self.logger.info(f'Found last page {pgNum}')
+                obitCount = (defPageObitCount * (pgNum - 1) + len(obits))
+                yield {
+                    'url': baseURL,
+                    'obitCount': obitCount
+                }
 
-    def find_last_page(self, response, guid, obitURL, lowerBound, middlePgNum, upperBound, baseURL):
+    def find_last_page(self, response, guid, obitURL, lowerBound, middlePgNum, upperBound, baseURL, defPageObitCount=None):
         try:
             json_data = response.json()
             obits = json_data.get('data', [])
-        except json.JSONDecodeError:
+        except ValueError:
             self.logger.info(f"Past last page: {middlePgNum}")
             upperBound = middlePgNum
             middlePgNum = (upperBound + lowerBound) // 2
+
+            if (middlePgNum == lowerBound):
+                self.logger.info(f"Found last page {middlePgNum}")
+                obitCount = (defPageObitCount * (middlePgNum - 1) + len(obits))
+                yield {
+                    'url': baseURL,
+                    'obitCount': obitCount
+                }
+                return
+
             self.logger.info(f"Lower Bound: {lowerBound}, Middle Bound: {middlePgNum}, Upper Bound: {upperBound}")
-            payload = f'pageNum={middlePgNum}&rpp=6&width=159.6&height=186.78555&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
             yield scrapy.Request(url=obitURL,
                                  method='POST',
-                                 body=payload,
+                                 body=self.build_payload(middlePgNum, guid),
                                  headers=self.build_headers(baseURL, includeContentType=True, includeReferer=True),
                                  callback=self.find_last_page,
                                  cb_kwargs={'guid': guid,
@@ -128,7 +145,44 @@ class f1ObitCounter(scrapy.Spider):
                                             'lowerBound': lowerBound,
                                             'middlePgNum': middlePgNum,
                                             'upperBound': upperBound,
-                                            'baseURL': baseURL})
+                                            'baseURL': baseURL,
+                                            'defPageObitCount': defPageObitCount})
+            return
+            
+        if (len(obits) == defPageObitCount):
+            self.logger.info(f"Not far enough: {middlePgNum}")
+            lowerBound = middlePgNum
+            middlePgNum = (upperBound + lowerBound) // 2
+
+            if (middlePgNum == lowerBound):
+                self.logger.info(f"Found last page {middlePgNum}")
+                obitCount = (defPageObitCount * (middlePgNum - 1) + len(obits))
+                yield {
+                    'url': baseURL,
+                    'obitCount': obitCount
+                }
+                return
+            
+            self.logger.info(f"Lower Bound: {lowerBound}, Middle Bound: {middlePgNum}, Upper Bound: {upperBound}")
+            yield scrapy.Request(url=obitURL,
+                                 method='POST',
+                                 body=self.build_payload(middlePgNum, guid),
+                                 headers=self.build_headers(baseURL, includeContentType=True, includeReferer=True),
+                                 callback=self.find_last_page,
+                                 cb_kwargs={'guid': guid,
+                                            'obitURL': obitURL,
+                                            'lowerBound': lowerBound,
+                                            'middlePgNum': middlePgNum,
+                                            'upperBound': upperBound,
+                                            'baseURL': baseURL,
+                                            'defPageObitCount': defPageObitCount})
+        elif (len(obits) < defPageObitCount):
+            self.logger.info(f'Found last page {middlePgNum}')
+            obitCount = (defPageObitCount * (middlePgNum - 1) + len(obits))
+            yield {
+                    'url': baseURL,
+                    'obitCount': obitCount
+                }
 
     def build_headers(self, baseURL, includeContentType = True, includeReferer = True):
         headers = {
@@ -139,3 +193,6 @@ class f1ObitCounter(scrapy.Spider):
         if includeReferer:
             headers['Referer'] = urljoin(baseURL, '/obituary-listing')
         return headers
+    
+    def build_payload(self, pgNum, guid):
+        return f'pageNum={pgNum}&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
