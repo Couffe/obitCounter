@@ -15,19 +15,17 @@ class f1ObitCounter(scrapy.Spider):
     name = 'frunnerCounter'
     urls = ['https://www.burrier-queen.com']
 
-    #Testing site URL: https://www.swedberg-taylor.com/
-    #Testing site with memorials subdomain: https://www.burrier-queen.com
+    #Testing site URL: https://www.swedberg-taylor.com/ guid: MzA3OTA4Ok1haW5TaXRl
+    #Testing site with memorials subdomain: https://www.burrier-queen.com guid: MTc5NzUzOk1haW5TaXRl
     #Obituary URL: https://obituaries.frontrunnerpro.com/runtime/311039/ims/WF2/public/get-records-additional.php
     #pageNum=10&type=all&template=below&getServiceType=shiva&sort=dod&guid=MzA3OTA4Ok1haW5TaXRl&wholeSite=true
+    #pageNum=64&rpp=100&type=all&template=below&getServiceType=shiva&sort=dod&guid=MzA3OTA4Ok1haW5TaXRl&wholeSite=true
+    #getting stuck on page 101
     """
     headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
         }
-    Using this request returns a json file, that has all the obit info. Can traverse by doubling page number until we're past last page which
-    will be a json that says invalid page number.
-
-    Need to get guid from the page in order to make request
         """
     
     def start_requests(self):
@@ -69,7 +67,30 @@ class f1ObitCounter(scrapy.Spider):
     def get_bounds(self, response, guid, obitURL, pgNum, baseURL, defPageObitCount=None):
         try:
             json_data = response.json()
+            maxPgNum = json_data.get('maxPageNum', None)
             obits = json_data.get('data', [])
+
+            if maxPgNum is not None:
+                self.logger.info(f"Max Page Number: {maxPgNum}")
+                if pgNum == maxPgNum:
+                    self.logger.info(f"Found last page {pgNum}")
+                    obitCount = len(obits)
+                    yield {
+                        'url': baseURL,
+                        'obitCount': obitCount
+                    }
+                    return
+                else:
+                    self.logger.info(f"Requesting last page {maxPgNum}")
+                    yield scrapy.Request(url=obitURL,
+                                         method='POST',
+                                         body=self.build_payload(maxPgNum, guid),
+                                         headers=self.build_headers(baseURL, includeContentType=True, includeReferer=True),
+                                         callback=self.req_last_page,
+                                         cb_kwargs={'guid': guid,
+                                                    'obitURL': obitURL,
+                                                    'pgNum': maxPgNum,
+                                                    'baseURL': baseURL})
             
         except ValueError:
             self.logger.info(f'Past Last Page: {pgNum}')
@@ -90,7 +111,8 @@ class f1ObitCounter(scrapy.Spider):
                                             'defPageObitCount': defPageObitCount})
             return
 
-        if pgNum == 1:
+
+        """if pgNum == 1:
             defPageObitCount = len(obits)
             self.logger.info(f"Page Obit Count: {defPageObitCount}")
 
@@ -114,7 +136,17 @@ class f1ObitCounter(scrapy.Spider):
                 yield {
                     'url': baseURL,
                     'obitCount': obitCount
-                }
+                }"""
+        
+    def req_last_page(self, response, guid, obitURL, pgNum, baseURL):
+        json_data = response.json()
+        obits = json_data.get('data', [])
+
+        obitCount = (100 * (pgNum - 1) + len(obits))
+        yield {
+            'url': baseURL,
+            'obitCount': obitCount
+        }
 
     def find_last_page(self, response, guid, obitURL, lowerBound, middlePgNum, upperBound, baseURL, defPageObitCount=None):
         try:
@@ -195,4 +227,4 @@ class f1ObitCounter(scrapy.Spider):
         return headers
     
     def build_payload(self, pgNum, guid):
-        return f'pageNum={pgNum}&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
+        return f'pageNum={pgNum}&rpp=100&type=all&template=below&getServiceType=shiva&sort=dod&guid={guid}&wholeSite=true'
