@@ -13,7 +13,7 @@ class f1ObitCounter(scrapy.Spider):
     )
 
     name = 'f1Counter'
-    urls = ['https://www.washburn-mcreavy.com/']
+    urls = ['']
 
     #url = 'https://www.owenfuneralhome.com/obituaries/api/search.json'
     #payload = 'orderBy=DeathDate&pageSize=12&pageNumber=1'

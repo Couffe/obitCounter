@@ -13,19 +13,8 @@ class cfsObitCounter(scrapy.Spider):
     )
 
     name = 'cfsCounter'
-    urls = ['https://www.cannonfuneral.com', 'https://www.lackeyandsonsfuneralhome.com', 
-            'https://www.greenfamilycremationandburial.com', 'https://www.cllynchmortuary.net']
+    urls = ['']
 
-    def build_headers(self, base_url, include_content_type=True, include_referer=False):
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-        }
-        if include_content_type:
-            headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        if include_referer:
-            headers['Referer'] = urljoin(base_url, '/listings')
-        return headers
-    
     def start_requests(self):
         for url in self.urls:
             fullURL = urljoin(url, '/listings')
@@ -92,3 +81,13 @@ class cfsObitCounter(scrapy.Spider):
 
     def build_payload(self, fhid, pgNumber):
         return f"pg={pgNumber}&term=&paginate=1&ym=0&showmiddlename=0&listcity=0&tgt=obitlist&numlistings=10&sids={fhid}&typ=1&txtsrch=0"
+
+    def build_headers(self, base_url, include_content_type=True, include_referer=False):
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        }
+        if include_content_type:
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        if include_referer:
+            headers['Referer'] = urljoin(base_url, '/listings')
+        return headers
