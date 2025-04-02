@@ -1,6 +1,7 @@
 import scrapy
 import logging
 from scrapy.utils.log import configure_logging
+from urllib.parse import urlparse
 
 #Get's the obituary count for all Batesville sites, new or old layout
 class bvilleObitCounter(scrapy.Spider):
@@ -23,6 +24,16 @@ class bvilleObitCounter(scrapy.Spider):
     def start_requests(self):
         #Sends request to URL to get the obituary page link
         for url in self.urls:
+            parsed = urlparse(url)
+
+            if not parsed.scheme:
+                url = f"https://{url}"
+
+            parsed = urlparse(url)
+            if not parsed.netloc.startswith('www.'):
+                url = url.replace(parsed.netloc, f"www.{parsed.netloc}")
+
+            self.logger.info(f"Request URL: {url}")
             yield scrapy.Request(url=url, 
                                 callback=self.getObitPage, 
                                 headers=self.headers, 

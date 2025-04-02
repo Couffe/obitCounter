@@ -94,8 +94,3 @@ DOWNLOAD_HANDLERS = {
     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
 }
-
-# Log settings
-LOG_FILE = "log.txt"
-LOG_LEVEL = "INFO"
-LOG_STDOUT = True

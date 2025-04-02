@@ -2,4 +2,4 @@
 /.venv
 /.vscode
 obitCounter/log.txt
-obitCounter/obitCounter/spiders/__pycache__
+**/__pycache__/
