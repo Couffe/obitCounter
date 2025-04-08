@@ -13,10 +13,25 @@ class cfsObitCounter(scrapy.Spider):
     )
 
     name = 'cfsCounter'
-    urls = ['']
+    
+    def __init__(self, domain=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if domain:
+            self.urls = self.urls = [d.strip() for d in domain.split(',')]
+        else:
+            self.urls = []
 
     def start_requests(self):
         for url in self.urls:
+            parsed = urlparse(url)
+
+            if not parsed.scheme:
+                url = f"https://{url}"
+
+            parsed = urlparse(url)
+            if not parsed.netloc.startswith('www.'):
+                url = url.replace(parsed.netloc, f"www.{parsed.netloc}")
+                
             fullURL = urljoin(url, '/listings')
             self.logger.info(f"URL: {fullURL}")
             yield scrapy.Request(url=fullURL, headers=self.build_headers(url, include_content_type=False), callback=self.get_fhid)

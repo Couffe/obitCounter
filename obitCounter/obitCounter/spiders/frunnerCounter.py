@@ -2,7 +2,7 @@ import scrapy
 import logging
 import json
 from scrapy.utils.log import configure_logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 class f1ObitCounter(scrapy.Spider):
     configure_logging(install_root_handler=False)
@@ -13,10 +13,25 @@ class f1ObitCounter(scrapy.Spider):
     )
 
     name = 'frunnerCounter'
-    urls = ['https://www.fosterfuneralandcremation.com']
+    
+    def __init__(self, domain=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if domain:
+            self.urls = self.urls = [d.strip() for d in domain.split(',')]
+        else:
+            self.urls = []
     
     def start_requests(self):
         for url in self.urls:
+            parsed = urlparse(url)
+
+            if not parsed.scheme:
+                url = f"https://{url}"
+
+            parsed = urlparse(url)
+            if not parsed.netloc.startswith('www.'):
+                url = url.replace(parsed.netloc, f"www.{parsed.netloc}")
+
             fullURL = urljoin(url, '/obituary-listing')
             self.logger.info(f"URL: {fullURL}")
             yield scrapy.Request(url=fullURL, 

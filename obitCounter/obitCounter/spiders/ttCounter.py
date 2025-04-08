@@ -1,7 +1,7 @@
 import scrapy
 import logging
 from scrapy.utils.log import configure_logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 class ttObitCounter(scrapy.Spider):
     configure_logging(install_root_handler=False)
@@ -12,14 +12,29 @@ class ttObitCounter(scrapy.Spider):
     )
 
     name = 'ttCounter'
-    urls = ['']
 
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
     }
+    
+    def __init__(self, domain=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if domain:
+            self.urls = self.urls = [d.strip() for d in domain.split(',')]
+        else:
+            self.urls = []
 
     def start_requests(self):
         for url in self.urls:
+            parsed = urlparse(url)
+
+            if not parsed.scheme:
+                url = f"https://{url}"
+
+            parsed = urlparse(url)
+            if not parsed.netloc.startswith('www.'):
+                url = url.replace(parsed.netloc, f"www.{parsed.netloc}")
+
             fullURL = urljoin(url, '/obituaries/obituary-listings')
             self.logger.info(f"URL: {fullURL}")
             yield scrapy.Request(url=fullURL, headers=self.headers, callback=self.get_domainID)

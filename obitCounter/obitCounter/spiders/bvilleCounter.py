@@ -18,8 +18,13 @@ class bvilleObitCounter(scrapy.Spider):
     headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
         }
-    
-    urls = ['']
+
+    def __init__(self, domain=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if domain:
+            self.urls = self.urls = [d.strip() for d in domain.split(',')]
+        else:
+            self.urls = []
 
     def start_requests(self):
         #Sends request to URL to get the obituary page link
